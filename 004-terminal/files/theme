@@ -1,0 +1,155 @@
+# Nils' theme
+# ---------------------------------------
+
+###################################
+# Setup our environment variables #
+###################################
+
+# if superuser make the username red, otherwise white
+    if [ $UID -eq 0 ];
+    then
+        userName="%{$fg[red]%}%n%{$reset_color%}";
+    else
+        userName="%{$fg[yellow]%}%n%{$reset_color%}";
+    fi
+
+# The machine name
+    machine="%m"
+
+# if logged-in via SSH, show this....
+    if [ "$SSH_CLIENT" != "" ];
+    then
+        machineName="%{$fg[red]%}%S $machine %s%{$reset_color%}";
+    else
+        machineName="%{$fg[blue]%}$machine%{$reset_color%}";
+    fi
+
+# Set our time display
+    timeDisplay="%{$fg[yellow]%}%*%{$reset_color%}"
+
+function git_prompt_info() {
+  ref=$(git symbolic-ref HEAD 2> /dev/null) || ref=$(git rev-parse --short HEAD 2> /dev/null) || return
+  commitinfo=$(git log -n1 --pretty='%h %s')
+  sha=$(echo $commitinfo | awk '{print $1}')
+  msg=$(echo $commitinfo | head -n1 | awk '{$1=""; print}' | sed -e 's/^ //')
+  currentBranchName=${ref#refs/heads/}
+
+  git rev-parse @{u} &>/dev/null
+  if [[ "$?" == "128" ]]
+  then
+    isInSync="%{$fg[red]%}✕%{$fg_bold[yellow]%}"
+    trackingBranch="no-tracking"
+  else
+    gitDirectory=$(git rev-parse --show-toplevel 2> /dev/null)
+    trackingBranch="$(ruby $HOME/.remotes $gitDirectory)"
+    commitsAhead=$(git rev-list @{u}..HEAD --count)
+    commitsBehind=$(git rev-list HEAD..@{u} --count)
+    if [[ $commitsAhead == 0 && $commitsBehind == 0 ]]
+    then
+      isInSync="%{$fg[green]%}✔%{$fg_bold[yellow]%}"
+    else
+      isInSync="%{$fg[red]%}↓%{$fg_bold[yellow]%}$commitsBehind %{$fg[red]%}↑%{$fg_bold[yellow]%}$commitsAhead"
+    fi
+  fi
+
+  echo "\n# $isInSync %{$fg_bold[cyan]%}$trackingBranch %{$fg_no_bold[cyan]%}$currentBranchName%{$reset_color%}  %{$fg_bold[cyan]%}sha $(parse_git_dirty)$sha%{$reset_color%}  %{$fg_bold[cyan]%}commit %{$fg_no_bold[cyan]%}$msg%{$reset_color%}"
+}
+
+function vagrant_boxes()
+{
+    # Search for a directory called ".vagrant" continually up the directory tree,
+    # until we find the parent directory, and append ".vagrant"
+    vagrant_directory="$(find_dir_up $PWD .vagrant)/.vagrant"
+
+    if [[ ! -d "${vagrant_directory}" ]]; then return; fi
+
+    # Vagrant stores the ID of each VM in a file called "id" inside .vagrant
+    # There is one for each VM in the Vagrantfile, so we should collect them
+    # all here
+    vagrant_ids=$(find "${vagrant_directory}" -type f -name id 2>/dev/null)
+
+    # If we have no VM IDs, it means no boxes are built
+    if [[ "${vagrant_ids}" == "" ]];
+    then
+        display_vm_not_built
+        return
+    fi
+
+    # Dump a newline
+    echo
+
+    # Then we loop each VM ID and ask VirtualBox questions about it
+    while read -r vagrant_id
+    do
+        # Collect all the information we can from virtualbox about this VM
+        vagrant_information=$(vboxmanage showvminfo --machinereadable $(cat "${vagrant_id}"))
+
+        # Is it running?
+        vagrant_status=$(echo "${vagrant_information}" | grep "^VMState=" | awk -F'[=_"]' '{ print $3 }')
+
+        # Set a green tick if the VM is running, otherwise a cross
+        if [[ "${vagrant_status}" == "running" ]]; then vagrant_icon="%{$fg[green]%}✔"; else vagrant_icon="%{$fg[red]%}✕"; fi
+
+        # Vagrant VM name
+        vagrant_name=$(echo ${vagrant_information} | grep '^name=' | awk -F_ '{print $2}' | tr '[A-Z]' '[a-z]')
+
+        # Operating System
+        vagrant_os=$(echo ${vagrant_information} | grep "^ostype=" | awk -F'[=_"]' '{ print $3 }' | tr '[A-Z]' '[a-z]')
+
+        # Memory allocation
+        vagrant_memory=$(echo ${vagrant_information} | grep "^memory=" | awk -F'[=]' '{ print $2 }')
+
+        # Now we output the current box
+        echo "# ${vagrant_icon}%{$fg_bold[cyan]%} ${vagrant_name}:${vagrant_os} %{$fg_no_bold[cyan]%}$vagrant_status  %{$fg_bold[cyan]%}mem ${vagrant_memory}mb%{$reset_color%}"
+    done <<< "$vagrant_ids"
+}
+
+function display_vm_not_built() {
+    echo -n "
+# %{$fg[red]%}✕%{$fg_bold[cyan]%} vm not built%{$reset_color%}"
+}
+
+function precmd()
+{
+  export currentDirectory="$(ruby $HOME/.directory_colours $PWD)%{$reset_color%}"
+
+#  vagrantDir="$(find_dir_up $PWD .vagrant)/.vagrant"
+#
+#  if [ -d "$vagrantDir" ]; then
+#    vagrant_ids=$(find $vagrantDir -type f -name id 2>/dev/null)
+#
+#    if [[ $(echo "${vagrant_ids}" | wc -l) > 0 ]]; then
+#      vagrantInfo=$(vboxmanage showvminfo --machinereadable $(cat $vagrantDir/**/id))
+#      vagrantStatus=`echo $vagrantInfo | grep "^VMState=" | awk -F'[=_"]' '{ print $3 }'`
+#      if [[ "$vagrantStatus" == "running" ]]; then
+#        vagrantIcon="%{$fg[green]%}✔"
+#      else
+#        vagrantIcon="%{$fg[red]%}✕"
+#      fi
+#      vagrantName=`echo $vagrantInfo | grep '^name=' | awk -F_ '{print $2}' | tr '[A-Z]' '[a-z]'`
+#      vagrantOS=`echo $vagrantInfo | grep "^ostype=" | awk -F'[=_"]' '{ print $3 }' | tr '[A-Z]' '[a-z]'`
+#      vagrantMemory=`echo $vagrantInfo | grep "^memory=" | awk -F'[=]' '{ print $2 }'`
+#      vagrantLine="
+## $vagrantIcon%{$fg_bold[cyan]%} $vagrantName:$vagrantOS %{$fg_no_bold[cyan]%}$vagrantStatus  %{$fg_bold[cyan]%}mem ${vagrantMemory}mb%{$reset_color%}"
+#    else
+#      vagrantLine="
+## %{$fg[red]%}✕%{$fg_bold[cyan]%} vm not built%{$reset_color%}"
+#    fi
+#  else
+#    vagrantLine=""
+#  fi
+
+    vagrantLine=$(vagrant_boxes)
+}
+PROMPT='# $userName %{$fg_bold[cyan]%}on%{$reset_color%} $machineName %{$fg_bold[cyan]%}@%{$reset_color%} $timeDisplay %{$fg_bold[cyan]%}in%{$reset_color%} $currentDirectory$vagrantLine$(git_prompt_info)
+'
+
+RPROMPT='[%(0?.%{$fg[green]%}.%{$fg[red]%})%?:%!%{$reset_color%}]'
+
+# git theming
+ZSH_THEME_GIT_PROMPT_SUFFIX=""
+ZSH_THEME_GIT_PROMPT_CLEAN="%{$fg_no_bold[cyan]%}"
+ZSH_THEME_GIT_PROMPT_DIRTY="%{$fg_bold[red]%}"
+ZSH_THEME_GIT_PROMPT_BEHIND_REMOTE="behind $behind"
+ZSH_THEME_GIT_PROMPT_AHEAD_REMOTE="ahead $ahead"
+ZSH_THEME_GIT_PROMPT_DIVERGED_REMOTE="diverged from remote"

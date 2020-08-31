@@ -1,0 +1,178 @@
+#!/bin/bash
+
+function heading() {
+    echo ""
+    echo -e "\e[0;34m[$1]\e[0m"
+}
+export -f heading
+
+function linking() {
+    echo -e "  Linking \e[0;33m$1\e[0m..."
+}
+export -f linking
+
+function installing() {
+    echo -e "  Installing \e[0;33m$1\e[0m..."
+}
+export -f installing
+
+function cloning() {
+    echo -e "  Cloning \e[0;33m$1\e[0m..."
+}
+export -f cloning
+
+function ensuringdir() {
+    echo -e "  Ensuring directory \e[0;33m$1\e[0m exists..."
+}
+export -f ensuringdir
+
+function item() {
+    echo -e "  \e[0;33m$1\e[0m"
+}
+export -f item
+
+function finished() {
+    echo "done."
+}
+export -f finished
+
+function copying() {
+    echo -e "  Copying \e[0;33m$1\e[0m..."
+}
+export -f copying
+
+function updating() {
+    echo -e "  Updating \e[0;33m$1\e[0m..."
+}
+export -f updating
+
+function adding() {
+    echo -e "  Adding \e[0;33m$1\e[0m..."
+}
+export -f adding
+
+function committing() {
+    echo -e "  Committing \e[0;33m$1\e[0m..."
+}
+export -f committing
+
+function pushing() {
+    echo -e "  Pushing \e[0;33m$1\e[0m..."
+}
+export -f pushing
+
+function copy() {
+    copying $1
+    cp -f $DIR/$1 $2 >/dev/null 2>&1
+    finished
+}
+export -f copy
+
+function update() {
+    updating "dotfiles"
+    pushd "$DIR" >/dev/null 2>&1
+    git pull -q
+    finished
+    install
+    popd >/dev/null 2>&1
+}
+export -f update
+
+function install() {
+    $DIR/install
+}
+export -f install
+
+function addtogit() {
+    adding "dotfiles"
+    pushd $DIR >/dev/null 2>&1
+    git add -A >/dev/null 2>&1
+    popd >/dev/null 2>&1
+    finished
+}
+export -f addtogit
+
+function commit() {
+    committing "dotfiles"
+    pushd $DIR >/dev/null 2>&1
+    git commit -m "$1" >/dev/null 2>&1
+    popd >/dev/null 2>&1
+    finished
+}
+export -f commit
+
+function push() {
+    pushing "dotfiles"
+    pushd $DIR >/dev/null 2>&1
+    git push >/dev/null 2>&1
+    popd >/dev/null 2>&1
+    finished
+}
+export -f push
+
+function clone() {
+    cloning $1
+    if [ -d $HOME_DIR/$2 ]; then
+        rm -rf $HOME_DIR/$2
+    fi
+    git clone -q https://github.com/$1 $HOME_DIR/$2
+    finished
+}
+export -f clone
+
+function link() {
+    if [ -n "$2" ]; then
+        TARGET_DIR=$2
+    else
+        TARGET_DIR=$HOME_DIR
+    fi
+
+    linking $1
+    if [ -L $TARGET_DIR/$1 ] || [ -e $TARGET_DIR/$1 ]; then
+        rm -f $TARGET_DIR/$1
+    fi
+    ln -s $DIR/$1 $TARGET_DIR/$1
+    finished
+}
+export -f link
+
+function link_dot() {
+    if [ -n "$2" ]; then
+        TARGET_DIR=$2
+    else
+        TARGET_DIR=$HOME_DIR
+    fi
+
+    linking $1
+    if [ -L $TARGET_DIR/.$1 ] || [ -e $TARGET_DIR/.$1 ]; then
+        rm -f $TARGET_DIR/.$1
+    fi
+    ln -s $DIR/$1 $TARGET_DIR/.$1
+    finished
+}
+export -f link_dot
+
+function makedir() {
+    ensuringdir $1
+    if [ ! -d "$1" ]; then
+        mkdir -p "$1"
+    fi
+    finished
+}
+export -f makedir
+
+function modulelist() {
+    echo $(find $DIR -mindepth 1 -maxdepth 1 -type d -not -name '.*' | sort)
+}
+export -f modulelist
+
+function hiddenmodulelist() {
+    echo $(find $DIR -mindepth 1 -maxdepth 1 -type d -name '.*' | sort | grep -v ".git" | grep -v ".kateproject.d" | grep -v ".idea")
+}
+export -f hiddenmodulelist
+
+function allfinished() {
+    echo ""
+    echo -e "\e[0;34m[Finished $1]\e[0m"
+    echo ""
+}

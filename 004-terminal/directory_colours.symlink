@@ -1,0 +1,29 @@
+#!/usr/bin/env ruby
+
+def get_colour(path)
+    `\ls -d --color=always #{path}`.split('/')[0]
+end
+
+full_path = ARGV[0][1..-1]
+partial_path = ""
+default_colour = get_colour("/")
+no_permission_colour = "\e[01;31m"
+
+segments = full_path.split("/")
+
+if segments.length == 0
+    print default_colour + "/"
+    exit 0
+end
+
+segments.each do |segment|
+    partial_path = partial_path + "/" + segment.gsub(" ", "\\ ")
+    if system("test -w #{partial_path}")
+        segment_colour = get_colour(partial_path)
+    else
+        segment_colour = "\e[01;31m"
+    end
+    print default_colour + "/" + segment_colour + segment
+end
+
+print default_colour + "/" unless segments.length == 0

@@ -1,0 +1,41 @@
+require 'git'
+
+def sanitise(url)
+    trimmed = url
+    if url.start_with?("git@")
+        trimmed = url[4..-1]
+    end
+    if url.start_with?("git://")
+        trimmed = url[6..-1]
+    end
+    if url.start_with?("http://")
+        trimmed = url[7..-1]
+    end
+    if url.start_with?("https://")
+        trimmed = url[8..-1]
+    end
+
+    if trimmed.index(".")
+        trimmed.split(".")[0]
+    else
+        trimmed
+    end
+end
+
+git_directory = ARGV[0]
+repo_directory = ARGV[0] + "/.git"
+
+if (File.file?(git_directory + "/.git"))
+    repo_directory = git_directory + "/" + File.read(git_directory + "/.git")[8..-1].strip
+end
+
+index = repo_directory + "/index"
+
+repo = Git.open(git_directory, { :repository => repo_directory, :index => index })
+
+remotes = repo.remotes.map { |remote| remote.name + ":" + sanitise(remote.url) }.join(" / ")
+if remotes.length > 0
+    print remotes
+else
+    print "no tracking"
+end

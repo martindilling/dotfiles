@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# Run all dotfiles installers.
+
+# Stops execution on error
+set -e
+
+sudo echo -n ""
+
+cd "$(dirname $0)"/..
+DOTFILES_ROOT=$(pwd -P)
+HOME_DIR=$HOME
+
+. $DOTFILES_ROOT/script/functions
+
+# Make sure all install scripts can be executed
+sudo chmod +x **/install.sh
+
+# Find the installers and run them iteratively
+find . -name install.sh -type f -printf '%h\0%d\0%p\n' | sort -t '\0' -n | awk -F '\0' '{print $3}' | while read installer; do ${installer}; done
