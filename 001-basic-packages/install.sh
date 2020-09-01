@@ -10,5 +10,7 @@ installing "curl"
 sudo apt install -y curl
 installing "ruby"
 sudo apt install -y ruby
+installing "snapd"
+sudo apt install -y snapd
 
 finished
