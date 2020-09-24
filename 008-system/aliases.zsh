@@ -30,5 +30,11 @@ alias mkdir='mkdir -pv'
 
 # Make dir and navigate to it
 mkcd() {
-    mkdir -p -- "$1" && cd -P -- "$1"
+  if [ -z "$1" ]; then
+    echo "Enter a directory name"
+  elif [ -d "$1" ]; then
+    echo "\`$1' already exists"
+  else
+    mkdir -p -- "$1" && cd -P -- "$1" || exit
+  fi
 }
